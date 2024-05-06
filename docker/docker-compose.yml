@@ -180,25 +180,6 @@ services:
    - testing
   networks:
    - VE-network
-
-#  vachan-demos:
-#     image: kavitha3797/vachan-demos:v2-0-0-alpha-11
-#     expose:
-#       - 8002
-#     command: uvicorn main:app --host 0.0.0.0 --port 8002
-#     restart: always
-#     environment:
-#      - VACHAN_DOMAIN=${VACHAN_DOMAIN:-api.vachanengine.org}
-#      - VACHAN_LOGGING_LEVEL=INFO
-#     volumes:
-#      - logs-vol:/app/logs
-#     depends_on:
-#      - vachan-api
-#     profiles:
-#      - local-run
-#      - deployment
-#     networks:
-#      - VE-network
  
  vachan-cms-rest:
     image: vachanengine/vachan-cms-rest:v2.0.7
@@ -344,7 +325,6 @@ services:
     networks:
      - VE-network
 
-
  vachan-ai:
     image: jayasankarkk/vachan-ai:0.0.0-alpha.6
     healthcheck:
@@ -407,7 +387,6 @@ services:
      - VE-network
     container_name: vachan-ai
 
-
  worker:
     image: jayasankarkk/vachan-ai:0.0.0-alpha.6
     healthcheck:
@@ -443,7 +422,6 @@ services:
     networks:
      - VE-network 
     container_name: redis-worker
-
 
  # Web Server
  web-server-local:
@@ -496,7 +474,6 @@ services:
   networks:
    - VE-network
  
-
  ofelia-scheduler:
     image: mcuadros/ofelia:v0.3.7
     depends_on:
@@ -577,6 +554,44 @@ services:
      - local-run
     networks:
      - VE-network
+
+ # SigNoz services (copied from signoz/deploy/docker-compose.yaml, networks section removed)
+ clickhouse:
+    image: clickhouse/clickhouse-server:24.1.2-alpine
+    container_name: signoz-clickhouse
+    volumes:
+      - ./signoz/data/clickhouse:/var/lib/clickhouse
+      - ./signoz/clickhouse-config.xml:/etc/clickhouse-server/config.xml:ro
+      - ./signoz/clickhouse-config.xml:/etc/clickhouse-server/config.xml
+      - ./signoz/clickhouse-users.xml:/etc/clickhouse-server/users.xml
+      - ./signoz/custom-function.xml:/etc/clickhouse-server/custom-function.xml
+      - ./signoz/user_scripts:/var/lib/clickhouse/user_scripts/
+    ports:
+      - "9000:9000"  # Adjust if needed to avoid conflicts
+  
+ alertmanager:
+    image: signoz/alertmanager:${ALERTMANAGER_TAG:-0.23.5}  # Adjust version if needed
+    container_name: signoz-alertmanager
+    volumes:
+      - ./signoz/alertmanager.yml:/prometheus/alertmanager.yml:ro  # Adjust path if needed
+    command:
+      - '--config.file=/prometheus/alertmanager.yml'
+      - '--storage.path=/data'
+    ports:
+      - "9093:9093"  # Adjust if needed
+
+ query-service:
+    image: signoz/query-service:${DOCKER_TAG:-0.39.0}  # Adjust version if needed
+    command:
+      - "-config=/root/config/prometheus.yml"
+    ports:
+      - "8080:8080"  # Adjust if needed
+    volumes:
+      - ./signoz/prometheus.yml:/root/config/prometheus.yml:ro  # Adjust path if needed
+      - ../dashboards:/root/config/dashboards:ro  # Adjust path if needed
+      - ./signoz/data/signoz/:/var/lib/signoz/
+    depends_on:
+      - clickhouse
 
 networks:
    VE-network:
